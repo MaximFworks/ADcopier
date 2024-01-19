@@ -28,9 +28,10 @@ TBD
 .NOTES
 $newComputerObjectWithDescription  is re-declared after moving
 #>
-### PART 1: Load modules needed  ###
+### PART 1: Load modules needed and add some settings ###
 
 Import-Module ActiveDirectory
+$FormatEnumerationLimit = 30
 
 #________________________________
 
