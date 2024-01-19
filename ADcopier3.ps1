@@ -168,8 +168,10 @@ if($moveComputer -eq "YES"  -or $moveComputer -eq ""-or $moveComputer -eq "Y" ){
     # Move the new computer to the same path as the old computer. 
     #Firts parameter is an object and second is a string
     Move-ADObject -Identity $newComputerObjectWithDescription -TargetPath $oldComputerPathWithoutCn -ErrorAction Stop
+
     # Move-ADObject also breaks our object, so we need to re-assing in. Otherwise it will be invalid parameter for some cmdlets.
-    $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties Description 
+    $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties *
+
     # Description property is also added to be used in part 7
     Write-Host "Moving operation performed. Computer $newHostname was moved into path $oldComputerPathWithoutCn"
 } elseif($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
