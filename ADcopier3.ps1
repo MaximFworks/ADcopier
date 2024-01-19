@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 1.9 and is RC
+## This is version 1.9 and is RC for KÖOTKANBT
 
 .DESCRIPTION
 ..Reference table:  
@@ -124,8 +124,7 @@ $newPath = $newComputerObjectWithDescription | Select-Object -ExpandProperty Dis
 ##  ^^ Those paths will be used later on, but firstt, print them:
 Write-Host "Old computer path: $oldPath"
 Write-Host "New computer path: $newPath"
-## Give me some space
-Write-Host ""
+
 ##  Begginging to check, if current location of computers feels safe to operate (They are not in the same container)+
 # (new machine is located exactly inside intended container and not in some strange place)
 
@@ -136,16 +135,15 @@ $oldOU = ($oldPath -split ',')[1]
 $newOU = ($newPath -split ',')[1]
 # Now we are checking if they are in same OU, this is no-no
 if ($oldOU -eq $newOU) {
-    Write-Host "The hostnames are in the same OU: $oldOU - Sorry, that jsut feels wrong, we cannot continue, script will now exit" -ForegroundColor Red
+    Write-Host "`n`nThe hostnames are in the same OU: $oldOU - Sorry, that jsut feels wrong, we cannot continue, script will now exit" -ForegroundColor Red
     exit 11
 } else {
-    Write-Host "The hostnames are in different OUs: $oldOU and $newOU, everyhing seems to be fine" -ForegroundColor Green
+    Write-Host "`n`nThe hostnames are in different OUs: $oldOU and $newOU, everyhing seems to be fine" -ForegroundColor Green
 }
-## Give me some space
-Write-Host ""
+
 
 ## Now we need to check if new computer's OU is exactly tyoasemat at specific path:
-$checkingPath = "OU=Installed,OU=NewComputers,DC=maxlearn,DC=local"
+$checkingPath = "CN=T001239,OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunki,DC=fi"
 # If a new computer is not inside this path, script will not continue.
 # Check if the NEW hostname is in the desired OU
 if ($newPath -like "*$checkingPath*") {
@@ -155,15 +153,13 @@ if ($newPath -like "*$checkingPath*") {
     Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutleftCn , that feels very wrong, we are stopping now" -ForegroundColor Red
     exit 12
 }
-## Give me some space
-Write-Host ""
-#________________________________
 
+#________________________________
 
 ### PART 5: Move computer to a new AD location
 
 # Ask the user if they want to move the new computer to the same path as the old computer
-$moveComputer = Read-Host "Do you want to move the new computer to the same path as the old computer? [Default: Y] (Y/N/EXIT)"
+$moveComputer = Read-Host "`nDo you want to move the new computer to the same path as the old computer? [Default: Y] (Y/N/EXIT)"
 if($moveComputer -eq "YES"  -or $moveComputer -eq ""-or $moveComputer -eq "Y" ){
 
     #We already have path of old computer, let's just use it for -TargetPath. Target path must be without last CN, let's delete it:
@@ -184,7 +180,7 @@ if($moveComputer -eq "YES"  -or $moveComputer -eq ""-or $moveComputer -eq "Y" ){
 ### PART 6: Copy groups of old compter to a new computer
 Write-Host "`n`n***** Starting analysing and copying of groups **********`n" -BackgroundColor DarkMagenta
 # Set the restricted groups that should not be copied
-$restrictedGroupsToCopy = "testy2", "testy3"
+$restrictedGroupsToCopy = "Domain Computers", "testy3"
 
 # Get the groups that the old computer object is a member of. Array of strings. 
 $oldComputersGroups = Get-ADPrincipalGroupMembership -Identity $oldComputerObjectWithDescription | Select-Object -ExpandProperty Name
@@ -238,20 +234,17 @@ foreach ($group in $oldComputersGroups) {
         }
     }
 
-## Give me some space
-Write-Host ""
 
 # Display the final list of groups for the old and new computer objects
 
-Write-Host "Groups of $oldHostname`:" -ForegroundColor DarkMagenta
+Write-Host "`nGroups of $oldHostname`:" -ForegroundColor DarkMagenta
 foreach ($group in $oldComputersGroups) {
     Write-Host -NoNewLine "$group " 
 }
-## Give me some space
-Write-Host ""
+
 # Update the groups that the new computer object is a member of, because they had changed.
 $newComputerGroups = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription | Select-Object -ExpandProperty Name
-Write-Host "Final groups for $newHostname`:" -ForegroundColor DarkMagenta
+Write-Host "`nFinal groups for $newHostname`:" -ForegroundColor DarkMagenta
 foreach ($group in $newComputerGroups) {
     Write-Host -NoNewLine "$group " 
 }
