@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 1.9 and is RC for KÖOTKANBT
+## This is version 2 for KotkanBT
 
 .DESCRIPTION
 ..Reference table:  
@@ -31,7 +31,7 @@ $newComputerObjectWithDescription  is re-declared after moving
 ### PART 1: Load modules needed and add some settings ###
 
 Import-Module ActiveDirectory
-$FormatEnumerationLimit = 30
+Write-Host "This is verision 2 for KOTKANBT!"
 
 #________________________________
 
@@ -144,7 +144,7 @@ if ($oldOU -eq $newOU) {
 
 
 ## Now we need to check if new computer's OU is exactly tyoasemat at specific path:
-$checkingPath = "CN=T001239,OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunki,DC=fi"
+$checkingPath = "OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunki,DC=fi"
 # If a new computer is not inside this path, script will not continue.
 # Check if the NEW hostname is in the desired OU
 if ($newPath -like "*$checkingPath*") {
