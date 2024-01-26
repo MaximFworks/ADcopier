@@ -251,7 +251,7 @@ foreach ($group in $oldComputersGroups) {
 }
 
 # Update the groups that the new computer object is a member of, because they had changed.
-$newComputerGroups = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$newComputerGroups = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
 Write-Host "`nFinal groups for $newHostname`:" -ForegroundColor DarkMagenta
 foreach ($group in $newComputerGroups) {
     Write-Host -NoNewLine "$group " 
