@@ -92,20 +92,22 @@ function Get-ValidatedHostname {
     )
 
     do {
-        $inputValue = Read-Host "$Prompt (or leave empty to use '$DefaultValue')"
-
-        # Ensure that a non-empty, non-null value is entered, or use the default value if it's valid
-        if (-not $inputValue) {
-            if ($DefaultValue -and $DefaultValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
-                $inputValue = $DefaultValue
-            } else {
-                Write-Host "A valid default value is not available. Please enter a hostname." -ForegroundColor Red
-                continue
-            }
+        # Adjust the prompt based on whether a default value is available
+        if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
+            $inputPrompt = "$Prompt`: "
+        } else {
+            $inputPrompt = "$Prompt (or leave empty to use '$DefaultValue'): "
         }
 
-        # Validate the hostname format
-        if ($inputValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
+        $inputValue = Read-Host $inputPrompt
+
+        # Use default value if input is empty and default value is valid
+        if ([string]::IsNullOrWhiteSpace($inputValue) -and $DefaultValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
+            $inputValue = $DefaultValue
+        }
+
+        # Check for non-empty input and validate hostname format
+        if (-not [string]::IsNullOrWhiteSpace($inputValue) -and $inputValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
             return $inputValue
         } else {
             Write-Host "Invalid hostname. Please enter a valid hostname." -ForegroundColor Red
@@ -116,6 +118,7 @@ function Get-ValidatedHostname {
 # Script execution
 $oldHostname = Get-ValidatedHostname -Prompt "Enter the old hostname" -DefaultValue $oldHostname
 $newHostname = Get-ValidatedHostname -Prompt "Enter the new hostname" -DefaultValue $newHostname
+
 
 
 #________________________________
@@ -197,23 +200,32 @@ if ($newPath -like "*$checkingPath*") {
 
 # Ask the user if they want to move the new computer to the same path as the old computer
 $moveComputer = Read-Host "`nDo you want to move the new computer to the same path as the old computer? [Default: Y] (Y/N/EXIT)"
-if($moveComputer -eq "YES"  -or $moveComputer -eq ""-or $moveComputer -eq "Y" ){
+if ($moveComputer -eq "YES" -or $moveComputer -eq "" -or $moveComputer -eq "Y" ){
 
-    #We already have path of old computer, let's just use it for -TargetPath. Target path must be without last CN, let's delete it:
     $oldComputerPathWithoutCn = $oldPath -replace 'CN=[^,]*(,|$)', ''
-    # Move the new computer to the same path as the old computer. 
-    #Firts parameter is an object and second is a string
-    Move-ADObject -Identity $newComputerObjectWithDescription -TargetPath $oldComputerPathWithoutCn -ErrorAction Stop
-    Start-Sleep -Seconds 4
-    # Move-ADObject also breaks our object, so we need to re-assing in. Otherwise it will be invalid parameter for some cmdlets.
-    $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties *
+    Move-ADObject -Identity $newComputerObjectWithDescription.DistinguishedName -TargetPath $oldComputerPathWithoutCn -ErrorAction Stop
+    $success = $false
+    while (-not $success) {
+        Start-Sleep -Seconds 1
+        $newComputerObjectWithDescription = $null # Unassign the variable before each cycle
+        try {
+            $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties * -ErrorAction Stop
+            if ($newComputerObjectWithDescription.DistinguishedName -notlike "*$oldComputerPathWithoutCn*") {
+                throw "Computer not in expected path"
+            }
+            Write-Host "Moving operation successful. Computer $newHostname was moved to path $oldComputerPathWithoutCn"
+            $success = $true
+        } catch {
+            Write-Host "Attempt to verify move failed, retrying..." -ForegroundColor Yellow
+        }
+    }
 
-    # Description property is also added to be used in part 7
-    Write-Host "Moving operation performed. Computer $newHostname was moved into path $oldComputerPathWithoutCn"
-} elseif($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
+} elseif ($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
     Write-Host "User wanted to exit" -ForegroundColor Red
     exit 22
-} # endif
+}
+# endif
+
 #________________________________
 
 ### PART 6: Copy groups of old compter to a new computer
