@@ -97,7 +97,7 @@ function Get-ValidatedHostname {
 
         # Adjust the prompt based on whether a valid default value is available
         if ($useDefaultValue) {
-            $inputPrompt = "$Prompt (or leave empty to use '$DefaultValue'): "
+            $inputPrompt = "$Prompt (or leave empty to use '$DefaultValue') "
         } else {
             $inputPrompt = "$Prompt`: "
         }
