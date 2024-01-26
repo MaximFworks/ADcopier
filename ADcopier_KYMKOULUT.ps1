@@ -92,18 +92,21 @@ function Get-ValidatedHostname {
     )
 
     do {
-        # Adjust the prompt based on whether a default value is available
-        if ([string]::IsNullOrWhiteSpace($DefaultValue)) {
-            $inputPrompt = "$Prompt`: "
-        } else {
+        # Check if DefaultValue is not null or whitespace
+        $useDefaultValue = -not [string]::IsNullOrWhiteSpace($DefaultValue)
+
+        # Adjust the prompt based on whether a valid default value is available
+        if ($useDefaultValue) {
             $inputPrompt = "$Prompt (or leave empty to use '$DefaultValue'): "
+        } else {
+            $inputPrompt = "$Prompt`: "
         }
 
         $inputValue = Read-Host $inputPrompt
 
-        # Use default value if input is empty and default value is valid
-        if ([string]::IsNullOrWhiteSpace($inputValue) -and $DefaultValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
-            $inputValue = $DefaultValue
+        # If input is empty and default value is valid, use the default value
+        if ([string]::IsNullOrWhiteSpace($inputValue) -and $useDefaultValue) {
+            return $DefaultValue
         }
 
         # Check for non-empty input and validate hostname format
@@ -116,8 +119,13 @@ function Get-ValidatedHostname {
 }
 
 # Script execution
+# Ensure $oldHostname and $newHostname are initialized as empty strings if not already set
+if ($null -eq $oldHostname) { $oldHostname = '' }
+if ($null -eq $newHostname) { $newHostname = '' }
+
 $oldHostname = Get-ValidatedHostname -Prompt "Enter the old hostname" -DefaultValue $oldHostname
 $newHostname = Get-ValidatedHostname -Prompt "Enter the new hostname" -DefaultValue $newHostname
+
 
 
 
