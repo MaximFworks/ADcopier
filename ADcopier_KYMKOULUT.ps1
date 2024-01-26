@@ -83,18 +83,28 @@ return $returnValue
 # Ask the user to enter the old and new computer hostnames, do basic check
 # Both used in every part from now, because this string is easilly accesible form Write-Host
 function Get-ValidatedHostname {
+    [CmdletBinding()]
     param (
+        [Parameter(Mandatory)]
         [string]$Prompt,
+
         [string]$DefaultValue
     )
 
     do {
         $inputValue = Read-Host "$Prompt (or leave empty to use '$DefaultValue')"
-        if (-not $inputValue -and $DefaultValue) {
-            $inputValue = $DefaultValue
+
+        # Ensure that a non-empty, non-null value is entered, or use the default value if it's valid
+        if (-not $inputValue) {
+            if ($DefaultValue -and $DefaultValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
+                $inputValue = $DefaultValue
+            } else {
+                Write-Host "A valid default value is not available. Please enter a hostname." -ForegroundColor Red
+                continue
+            }
         }
 
-        # Basic sanity check for hostname validity
+        # Validate the hostname format
         if ($inputValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
             return $inputValue
         } else {
@@ -103,9 +113,10 @@ function Get-ValidatedHostname {
     } while ($true)
 }
 
-# Script execution start
+# Script execution
 $oldHostname = Get-ValidatedHostname -Prompt "Enter the old hostname" -DefaultValue $oldHostname
 $newHostname = Get-ValidatedHostname -Prompt "Enter the new hostname" -DefaultValue $newHostname
+
 
 #________________________________
 
@@ -117,8 +128,7 @@ Write-Host "Checking your entry for validity; name of the old computer:"
 $resultOldComputerCheck = Confirm-DataComputerNameIsValidAndExists -Name $oldHostname
 Write-Host "Checking your entry for validity; name of the New computer:" 
 $resultNewComputerCheck = Confirm-DataComputerNameIsValidAndExists -Name $newHostname
-## Give me some space
-Write-Host ""
+
 # make decision to either continue script or stop execution based on validity check. Checking the last value of collection of objects:
 if ($resultNewComputerCheck[-1] -and $resultOldComputerCheck[-1])
 {    
@@ -132,13 +142,12 @@ else
     exit 10 # Exit with error
 }
 
-## Give me some space
-Write-Host ""
+
 #### At this points we have valid computer names, so we need to perform check, if it is okay to do what script does
 # Get computers from AD as an objects to be worked on. 
 # Get the old computer object with description property (not specifying it will not append it!) Descpiption will be used in P.7
 # Object used in P.5,6,7
-$oldComputerObjectWithDescription = Get-ADComputer -Identity $oldHostname -Properties Description
+$oldComputerObjectWithDescription = Get-ADComputer -Identity $oldHostname -Properties *
 $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname # Must be re-initiated after moving.
 # Display the old and current paths of the computer object in Active Directory, those are strings. 
 # we will cut parent from theese strings, a parent is OU to move our computers
