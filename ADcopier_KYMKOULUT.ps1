@@ -82,8 +82,30 @@ return $returnValue
 # Script execution Start
 # Ask the user to enter the old and new computer hostnames, do basic check
 # Both used in every part from now, because this string is easilly accesible form Write-Host
-$oldHostname = Read-Host "Enter the old hostname" 
-$newHostname = Read-Host "Enter the new hostname"
+function Get-ValidatedHostname {
+    param (
+        [string]$Prompt,
+        [string]$DefaultValue
+    )
+
+    do {
+        $inputValue = Read-Host "$Prompt (or leave empty to use '$DefaultValue')"
+        if (-not $inputValue -and $DefaultValue) {
+            $inputValue = $DefaultValue
+        }
+
+        # Basic sanity check for hostname validity
+        if ($inputValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
+            return $inputValue
+        } else {
+            Write-Host "Invalid hostname. Please enter a valid hostname." -ForegroundColor Red
+        }
+    } while ($true)
+}
+
+# Script execution start
+$oldHostname = Get-ValidatedHostname -Prompt "Enter the old hostname" -DefaultValue $oldHostname
+$newHostname = Get-ValidatedHostname -Prompt "Enter the new hostname" -DefaultValue $newHostname
 
 #________________________________
 
