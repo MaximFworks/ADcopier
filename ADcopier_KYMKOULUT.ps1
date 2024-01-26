@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 2 for KotkanBT
+## This is version 2 for KYMKOULUT domain
 
 .DESCRIPTION
 ..Reference table:  
@@ -31,7 +31,7 @@ $newComputerObjectWithDescription  is re-declared after moving
 ### PART 1: Load modules needed and add some settings ###
 
 Import-Module ActiveDirectory
-Write-Host "This is verision 2 for KOTKANBT!"
+Write-Host "This is verision 2 for KYMKOULUT"
 
 #________________________________
 
@@ -144,16 +144,21 @@ if ($oldOU -eq $newOU) {
 
 
 ## Now we need to check if new computer's OU is exactly tyoasemat at specific path:
-$checkingPath = "OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunki,DC=fi"
+$checkingPath = "OU=Tyoasemat asennus,OU=Yhteiset,OU=PYHTAANKOULUT,DC=kymkoulut,DC=fi"
 # If a new computer is not inside this path, script will not continue.
 # Check if the NEW hostname is in the desired OU
 if ($newPath -like "*$checkingPath*") {
     Write-Host "$newHostname is located in the following path $checkingPath " 
 } else {
-    $newComputerPathWithoutleftCn = $newPath -replace 'CN=[^,]*(,|$)', ''
-    Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutleftCn , that feels very wrong, we are stopping now" -ForegroundColor Red
-    exit 12
+    $newComputerPathWithoutLeftCn = $newPath -replace 'CN=[^,]*(,|$)', ''
+    Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutLeftCn, that feels very wrong." -ForegroundColor Red
+    $userChoice = Read-Host "Do you want to continue? Y / [N]"
+    if ($userChoice.ToUpper() -ne 'Y') {
+        Write-Host "Script stopped by user choice." -ForegroundColor Yellow
+        exit 12
+    }
 }
+
 
 #________________________________
 
@@ -186,10 +191,10 @@ Write-Host "`n`n***** Starting analysing and copying of groups **********`n" -Ba
 $restrictedGroupsToCopy = "Domain Computers", "testy3"
 
 # Get the groups that the old computer object is a member of. Array of strings. 
-$oldComputersGroups = Get-ADPrincipalGroupMembership -Identity $oldComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$oldComputersGroups = Get-ADPrincipalGroupMembership -Identity $oldComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
 
 # Get the groups that the new computer object is a member of. Array of strings. 
-$groupsOfNewHost = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$groupsOfNewHost = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
 
 # Display the groups that the old computer object is a member of
 Write-Host "Groups for $oldHostname`:"
