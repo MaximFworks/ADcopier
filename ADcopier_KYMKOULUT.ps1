@@ -3,11 +3,11 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 2 for KYMKOULUT domain
+## This is version 4 for KYMKOULUT domain
 
 .DESCRIPTION
 ..Reference table:  
-### PART 1: Load modules needed  
+### PART 1: Load modules and settings needed  
 ________________________________
 ### PART 2: Define functions
 ________________________________

@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 2 for KotkanBT
+## This is version 3 for KotkanBT
 
 .DESCRIPTION
 ..Reference table:  
