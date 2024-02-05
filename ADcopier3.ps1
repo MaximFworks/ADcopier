@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 4 for KOTKANBT domain
+## This is version 5 for KOTKANBT domain
 
 .DESCRIPTION
 ..Reference table:  
@@ -215,18 +215,40 @@ if ($moveComputer -eq "YES" -or $moveComputer -eq "" -or $moveComputer -eq "Y" )
     $success = $false
     while (-not $success) {
         Start-Sleep -Seconds 1
-        $newComputerObjectWithDescription = $null # Unassign the variable before each cycle
+        $newComputerObjectWithDescription = $null # Reset variable for new cycle
+        
         try {
+            Write-Host "Attempting to retrieve new computer object for hostname: $newHostname" -ForegroundColor Cyan
             $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties * -ErrorAction Stop
+    
+            # Check if computer is in the expected path
             if ($newComputerObjectWithDescription.DistinguishedName -notlike "*$oldComputerPathWithoutCn*") {
-                throw "Computer not in expected path"
+                throw "Custom Exception: Computer not in expected path"
             }
-            Write-Host "Moving operation successful. Computer $newHostname was moved to path $oldComputerPathWithoutCn"
+    
+            Write-Host "Attempting to retrieve group membership for the new computer object" -ForegroundColor Cyan
+            $groupsOfNewHost = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
+            Write-Host "Group membership retrieved successfully" -ForegroundColor Green
+    
+            Write-Host "Moving operation successful. Computer $newHostname was moved to path $oldComputerPathWithoutCn" -ForegroundColor Green
             $success = $true
         } catch {
-            Write-Host "Attempt to verify move failed, retrying..." -ForegroundColor Yellow
+            # Log the identity used for Get-ADPrincipalGroupMembership
+            Write-Host "Identity used for Get-ADPrincipalGroupMembership: $($newComputerObjectWithDescription.SamAccountName)" -ForegroundColor Magenta
+    
+            # Determine if the exception is a custom exception
+            if ($_.Exception.Message -like "Custom Exception:*") {
+                Write-Host $_.Exception.Message -ForegroundColor Red
+            } else {
+                Write-Host "Error encountered: $($_.Exception.GetType().Name). Retrying operation..." -ForegroundColor Yellow
+            }
+    
+            Write-Host "Retry cycle initiated for hostname: $newHostname" -ForegroundColor Yellow
         }
     }
+    
+    
+    
 
 } elseif ($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
     Write-Host "User wanted to exit" -ForegroundColor Red
