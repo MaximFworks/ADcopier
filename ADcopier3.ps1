@@ -3,11 +3,11 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 3 for KotkanBT
+## This is version 4 for KOTKANBT domain
 
 .DESCRIPTION
 ..Reference table:  
-### PART 1: Load modules needed  
+### PART 1: Load modules and settings needed  
 ________________________________
 ### PART 2: Define functions
 ________________________________
@@ -31,7 +31,7 @@ $newComputerObjectWithDescription  is re-declared after moving
 ### PART 1: Load modules needed and add some settings ###
 
 Import-Module ActiveDirectory
-Write-Host "This is verision 2 for KOTKANBT!"
+Write-Host "This is verision 2 for KOTKANBT"
 
 #________________________________
 
@@ -82,8 +82,52 @@ return $returnValue
 # Script execution Start
 # Ask the user to enter the old and new computer hostnames, do basic check
 # Both used in every part from now, because this string is easilly accesible form Write-Host
-$oldHostname = Read-Host "Enter the old hostname" 
-$newHostname = Read-Host "Enter the new hostname"
+function Get-ValidatedHostname {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]$Prompt,
+
+        [string]$DefaultValue
+    )
+
+    do {
+        # Check if DefaultValue is not null or whitespace
+        $useDefaultValue = -not [string]::IsNullOrWhiteSpace($DefaultValue)
+
+        # Adjust the prompt based on whether a valid default value is available
+        if ($useDefaultValue) {
+            $inputPrompt = "$Prompt (or leave empty to use '$DefaultValue') "
+        } else {
+            $inputPrompt = "$Prompt`: "
+        }
+
+        $inputValue = Read-Host $inputPrompt
+
+        # If input is empty and default value is valid, use the default value
+        if ([string]::IsNullOrWhiteSpace($inputValue) -and $useDefaultValue) {
+            return $DefaultValue
+        }
+
+        # Check for non-empty input and validate hostname format
+        if (-not [string]::IsNullOrWhiteSpace($inputValue) -and $inputValue -match "^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$") {
+            return $inputValue
+        } else {
+            Write-Host "Invalid hostname. Please enter a valid hostname." -ForegroundColor Red
+        }
+    } while ($true)
+}
+
+# Script execution
+# Ensure $oldHostname and $newHostname are initialized as empty strings if not already set
+if ($null -eq $oldHostname) { $oldHostname = '' }
+if ($null -eq $newHostname) { $newHostname = '' }
+
+$oldHostname = Get-ValidatedHostname -Prompt "Enter the old hostname" -DefaultValue $oldHostname
+$newHostname = Get-ValidatedHostname -Prompt "Enter the new hostname" -DefaultValue $newHostname
+
+
+
 
 #________________________________
 
@@ -95,8 +139,7 @@ Write-Host "Checking your entry for validity; name of the old computer:"
 $resultOldComputerCheck = Confirm-DataComputerNameIsValidAndExists -Name $oldHostname
 Write-Host "Checking your entry for validity; name of the New computer:" 
 $resultNewComputerCheck = Confirm-DataComputerNameIsValidAndExists -Name $newHostname
-## Give me some space
-Write-Host ""
+
 # make decision to either continue script or stop execution based on validity check. Checking the last value of collection of objects:
 if ($resultNewComputerCheck[-1] -and $resultOldComputerCheck[-1])
 {    
@@ -110,13 +153,12 @@ else
     exit 10 # Exit with error
 }
 
-## Give me some space
-Write-Host ""
+
 #### At this points we have valid computer names, so we need to perform check, if it is okay to do what script does
 # Get computers from AD as an objects to be worked on. 
 # Get the old computer object with description property (not specifying it will not append it!) Descpiption will be used in P.7
 # Object used in P.5,6,7
-$oldComputerObjectWithDescription = Get-ADComputer -Identity $oldHostname -Properties Description
+$oldComputerObjectWithDescription = Get-ADComputer -Identity $oldHostname -Properties *
 $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname # Must be re-initiated after moving.
 # Display the old and current paths of the computer object in Active Directory, those are strings. 
 # we will cut parent from theese strings, a parent is OU to move our computers
@@ -150,10 +192,15 @@ $checkingPath = "OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunk
 if ($newPath -like "*$checkingPath*") {
     Write-Host "$newHostname is located in the following path $checkingPath " 
 } else {
-    $newComputerPathWithoutleftCn = $newPath -replace 'CN=[^,]*(,|$)', ''
-    Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutleftCn , that feels very wrong, we are stopping now" -ForegroundColor Red
-    exit 12
+    $newComputerPathWithoutLeftCn = $newPath -replace 'CN=[^,]*(,|$)', ''
+    Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutLeftCn, that feels very wrong." -ForegroundColor Red
+    $userChoice = Read-Host "Do you want to continue? Y / [N]"
+    if ($userChoice.ToUpper() -ne 'Y') {
+        Write-Host "Script stopped by user choice." -ForegroundColor Yellow
+        exit 12
+    }
 }
+
 
 #________________________________
 
@@ -161,23 +208,32 @@ if ($newPath -like "*$checkingPath*") {
 
 # Ask the user if they want to move the new computer to the same path as the old computer
 $moveComputer = Read-Host "`nDo you want to move the new computer to the same path as the old computer? [Default: Y] (Y/N/EXIT)"
-if($moveComputer -eq "YES"  -or $moveComputer -eq ""-or $moveComputer -eq "Y" ){
+if ($moveComputer -eq "YES" -or $moveComputer -eq "" -or $moveComputer -eq "Y" ){
 
-    #We already have path of old computer, let's just use it for -TargetPath. Target path must be without last CN, let's delete it:
     $oldComputerPathWithoutCn = $oldPath -replace 'CN=[^,]*(,|$)', ''
-    # Move the new computer to the same path as the old computer. 
-    #Firts parameter is an object and second is a string
-    Move-ADObject -Identity $newComputerObjectWithDescription -TargetPath $oldComputerPathWithoutCn -ErrorAction Stop
+    Move-ADObject -Identity $newComputerObjectWithDescription.DistinguishedName -TargetPath $oldComputerPathWithoutCn -ErrorAction Stop
+    $success = $false
+    while (-not $success) {
+        Start-Sleep -Seconds 1
+        $newComputerObjectWithDescription = $null # Unassign the variable before each cycle
+        try {
+            $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties * -ErrorAction Stop
+            if ($newComputerObjectWithDescription.DistinguishedName -notlike "*$oldComputerPathWithoutCn*") {
+                throw "Computer not in expected path"
+            }
+            Write-Host "Moving operation successful. Computer $newHostname was moved to path $oldComputerPathWithoutCn"
+            $success = $true
+        } catch {
+            Write-Host "Attempt to verify move failed, retrying..." -ForegroundColor Yellow
+        }
+    }
 
-    # Move-ADObject also breaks our object, so we need to re-assing in. Otherwise it will be invalid parameter for some cmdlets.
-    $newComputerObjectWithDescription = Get-ADComputer -Identity $newHostname -Properties *
-
-    # Description property is also added to be used in part 7
-    Write-Host "Moving operation performed. Computer $newHostname was moved into path $oldComputerPathWithoutCn"
-} elseif($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
+} elseif ($moveComputer -eq "EXIT" -or $moveComputer -eq "e") {
     Write-Host "User wanted to exit" -ForegroundColor Red
     exit 22
-} # endif
+}
+# endif
+
 #________________________________
 
 ### PART 6: Copy groups of old compter to a new computer
@@ -186,10 +242,10 @@ Write-Host "`n`n***** Starting analysing and copying of groups **********`n" -Ba
 $restrictedGroupsToCopy = "Domain Computers", "testy3"
 
 # Get the groups that the old computer object is a member of. Array of strings. 
-$oldComputersGroups = Get-ADPrincipalGroupMembership -Identity $oldComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$oldComputersGroups = Get-ADPrincipalGroupMembership -Identity $oldComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
 
 # Get the groups that the new computer object is a member of. Array of strings. 
-$groupsOfNewHost = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$groupsOfNewHost = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription.SamAccountName | Select-Object -ExpandProperty Name
 
 # Display the groups that the old computer object is a member of
 Write-Host "Groups for $oldHostname`:"
@@ -246,7 +302,7 @@ foreach ($group in $oldComputersGroups) {
 }
 
 # Update the groups that the new computer object is a member of, because they had changed.
-$newComputerGroups = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription | Select-Object -ExpandProperty Name
+$newComputerGroups = Get-ADPrincipalGroupMembership -Identity $newComputerObjectWithDescription.SamAccountName 
 Write-Host "`nFinal groups for $newHostname`:" -ForegroundColor DarkMagenta
 foreach ($group in $newComputerGroups) {
     Write-Host -NoNewLine "$group " 
