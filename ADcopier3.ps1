@@ -3,7 +3,7 @@
 ############################################################
 <#
 .SYNOPSIS
-## This is version 5 for KOTKANBT domain
+## This is version 6 for KOTKANBT and KYMKOULUT in one go! 
 
 .DESCRIPTION
 ..Reference table:  
@@ -80,6 +80,7 @@ return $returnValue
 
 ### PART 3: Ask for data to be worked on.
 # Script execution Start
+Write-Host "This is version 6 for KOTKANBT and KYMKOULUT" -ForegroundColor Green
 # Ask the user to enter the old and new computer hostnames, do basic check
 # Both used in every part from now, because this string is easilly accesible form Write-Host
 function Get-ValidatedHostname {
@@ -185,16 +186,16 @@ if ($oldOU -eq $newOU) {
 }
 
 
-## Now we need to check if new computer's OU is exactly tyoasemat at specific path:
-$checkingPath = "OU=Tyoasemat Asennus,OU=YHTEISKOHTEET,OU=KOTKA,DC=kotkankaupunki,DC=fi"
+# Desired Organizational Unit for validation
+$desiredOU = "OU=Tyoasemat Asennus"
 # If a new computer is not inside this path, script will not continue.
 # Check if the NEW hostname is in the desired OU
-if ($newPath -like "*$checkingPath*") {
-    Write-Host "$newHostname is located in the following path $checkingPath " 
+if ($newPath -match $desiredOU) {
+    Write-Host "$newHostname is located in the following path $newPath and UO is mathcing ($desiredOU)" 
 } else {
     $newComputerPathWithoutLeftCn = $newPath -replace 'CN=[^,]*(,|$)', ''
-    Write-Host "Sorry, but the computer $newHostname is not in the right path, which is $checkingPath. It is in the $newComputerPathWithoutLeftCn, that feels very wrong." -ForegroundColor Red
-    $userChoice = Read-Host "Do you want to continue? Y / [N]"
+    Write-Host "Sorry, but the computer $newHostname is not in the right OU ($desiredOU). It is in the path $newComputerPathWithoutLeftCn, that feels very wrong." -ForegroundColor Red
+    $userChoice = Read-Host "Do you STILL want to continue? Y / [N]" -ForegroundColor Red
     if ($userChoice.ToUpper() -ne 'Y') {
         Write-Host "Script stopped by user choice." -ForegroundColor Yellow
         exit 12
